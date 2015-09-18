@@ -15,6 +15,7 @@ cached, and for Rmarkdown to be verbose:
 ```{r opts-knit}
 library(knitr)
 opts_knit$set(echo = TRUE, cache = FALSE, verbose = TRUE)
+set.seed(1)
 ```
 
 ## Loading and preprocessing the data
@@ -38,6 +39,9 @@ str(activity)
 summary(activity)
 ```
 
+The `str()` output shows us the expected number of observations, and the summary of
+the `date` variable indicates we have the expected 288 observations per day.
+
 Notice the 2,304 `NA` values out of 17,568 observations (about 13%).
 
 
@@ -53,21 +57,53 @@ Instead, the `interval` value uses the 10s place to indicate the hour; for midni
 to one a.m., the range 0..55 is used, one a.m. to two a.m. uses 100..155, eleven p.m.
 to midnight uses 2300..2355.
 
-Rather than trying to parse that, create a new variable to represent the minute 
-of the day by assigning a vector of 288 increments of 5, beginning with 0, which 
-will repeat for each day's 288 observations:
+Rather than trying to parse that, we will simply create a new variable to represent
+the minute of the day by assigning a vector of 288 increments of 5, beginning with 0, 
+which will repeat for each day's 288 observations:
 
 ```{r add-dayminute}
-activity$dayminute <- c(0:287) * 5
+activity$daymin <- c(0:287) * 5
 tail(activity)
 ```
 
-With `dayminute` in place, we can use it in combination with the `date` string 
+### Add datetime variable
+
+With `daymin` in place, we can use it in combination with the `date` string 
 to add a datetime variable, called `dt`:
 
 ```{r add-dt}
 activity$dt <- as.POSIXct(activity[, 2]) + (60 * activity[, 4])
 tail(activity)
+```
+
+### Add is_weekend boolean
+
+One distinction we will want to make in our analysis is separating weekday 
+activity from weekend activity.  We can use the `weekdays()` function together 
+with the `dt` variable we just created to distinguish between them.
+
+While we're at it, we might as well keep a `weekday` variable around too -- if 
+nothing else, it makes it easier to debug calculations based on the `is_weekend`
+variable.
+
+```{r add-is-weekend}
+activity$weekday <- weekdays(activity$dt)
+activity$is_weekend <- activity$weekday %in% c("Saturday", "Sunday")
+```
+
+October 2012 had 4 Saturdays + 4 Sundays (6-7, 13-14, 20-21, 27-28), as did 
+November (3-4, 10-11, 17-18, 24-25), for a total of 16 days, or 4608 observations.
+
+```{r count-weekend-days}
+count_weekend_days <- nrow(subset(activity, activity$is_weekend))
+```
+
+We flagged **`r count_weekend_days`** as weekend days.
+
+Our final `activity` data looks like this:
+
+```{r echo = FALSE, activity-data-final}
+head(activity)
 ```
 
 
@@ -85,8 +121,6 @@ Again, let's take a peek at the data to make sure it looks like what we expect:
 
 ```{r total-steps-per-day-summary}
 str(steps_per_day)
-head(steps_per_day)
-summary(steps_per_day)
 ```
 
 Notice we have only 53 observations, but the `date` factor has the expected 61 
@@ -102,7 +136,7 @@ na_steps$steps <- TRUE
 aggregate(steps ~ date, na_steps, sum)
 ```
 
-There are only 8 days with `NA` steps values, and all 8 are missing all 288 
+There are 8 days with `NA` steps values, and all 8 are missing all 288 
 observations for the day.
 
 
@@ -114,7 +148,7 @@ The histogram displays the frequency that occurances of the total steps taken pe
 day falls within a set of ranges.
 
 Adding a `breaks` argument to increase the granularity of the graph reveals some
-interesting sparse ranges toward the extremes of the x-axis:
+interesting sparse ranges, especially toward the extremes of the x-axis:
 
 ```{r total-steps-per-day-histogram}
 hist(steps_per_day$steps, main = "Total steps per day", xlab = "Number of steps", 
@@ -131,7 +165,8 @@ mean_steps_per_day <- mean(steps_per_day$steps)
 median_steps_per_day <- median(steps_per_day$steps)
 ```
 
-The mean steps per day is **`r mean_steps_per_day`**, and the median is **`r median_steps_per_day`**.
+The mean steps per day is **`r prettyNum(mean_steps_per_day)`**, 
+and the median is **`r prettyNum(median_steps_per_day)`**.
 
 
 ## What is the average daily activity pattern?
@@ -140,10 +175,18 @@ This time our aggregate is the average steps taken during each interval,
 across all days in the dataset.
 
 ```{r avg-steps-per-interval}
-avg_steps_per_interval <- aggregate(steps ~ interval, activity, mean)
-head(avg_steps_per_interval)
-summary(avg_steps_per_interval)
+avg_steps_per_interval <- as.data.frame(aggregate(steps ~ interval, activity, mean))
+str(avg_steps_per_interval)
 ```
+
+The `str()` output shows we have rows for the expected 288 intervals, and the 
+values for both variables look reasonable.
+
+```{r count-na-intervals}
+count_na_intervals <- nrow(subset(avg_steps_per_interval, is.na(avg_steps_per_interval$steps)))
+```
+
+Our averages should not include any `NA` values: **`r count_na_intervals`**
 
 
 ### Time-series plot of daily activity pattern
@@ -163,14 +206,13 @@ grid(nx = 24, ny = 1)
 *Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?*
 
 ```{r interval-with-most-steps-on-avg}
-# convert from list to data.frame
-avg_steps_per_interval_df = as.data.frame(avg_steps_per_interval)
 # sort by avg steps
-avg_steps_per_interval_df[ order(avg_steps_per_interval_df[2], decreasing = TRUE),  ][1, ]
-interval_with_highest_avg_steps <- avg_steps_per_interval_df[ order(avg_steps_per_interval_df[2], decreasing = TRUE),  ][1, 1]
+highest_avg_steps_int <- avg_steps_per_interval[ order(avg_steps_per_interval[2], decreasing = TRUE),  ][1, 1]
+highest_avg_steps <- avg_steps_per_interval[ order(avg_steps_per_interval[2], decreasing = TRUE),  ][1, 2]
 ```
 
-The interval with the most steps on average is **`r interval_with_highest_avg_steps`**.
+The interval with the most steps on average is **`r highest_avg_steps_int`**
+(the highest average steps value was **`r highest_avg_steps `**).
 
 
 ## Imputing missing values
@@ -192,19 +234,71 @@ There are **`r count_na_steps`** rows with `NA` values.
 
 *Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.*
 
+As a first pass, fill in `NA` values with the rounded mean for that interval 
+across all days.
+
 
 ### Create new dataset with missing values filled in
 
 *Create a new dataset that is equal to the original dataset but with the missing data filled in.*
+
+```{r fill-in-nas}
+activity_complete <- activity
+activity_complete$steps <- ifelse(is.na(activity_complete$steps), 
+                                  round(avg_steps_per_interval[match(avg_steps_per_interval$interval, 
+                                                                     activity_complete$interval), 2]),
+                                  activity_complete$steps)
+count_na_steps_complete <- nrow(subset(activity_complete, is.na(activity_complete$steps)))
+```
+
+We expect the new dataset to have zero `NA` values in the new data set: **`r count_na_steps_complete`**.
+
+October 1st was one of the days that included `NA` values, let's look at the
+estimated steps for the first few rows now, compared to the calculated averages:
+
+```{r count-nas-in-new-dataset}
+head(cbind(avg_steps_per_interval, est=activity_complete[ , 1]), n = 20)
+```
+
 
 
 ### Compare new dataset with original
 
 *Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?*
 
+```{r total-steps-per-day-histogram-complete}
+steps_per_day_complete <- aggregate(steps ~ date, activity_complete, sum)
+mean_steps_per_day_complete <- mean(steps_per_day_complete$steps)
+median_steps_per_day_complete <- median(steps_per_day_complete$steps)
 
+hist(steps_per_day_complete$steps,  main = "Total steps per day with estimated values for missing data", 
+     xlab = "Number of steps", breaks = 36, col = "yellow")
 
+hist(steps_per_day$steps, add = TRUE, breaks = 36, col = "darkorange")
 
+legend("topright", c("with NAs", "estimated"), col=c("darkorange", "yellow"), lwd = 6)
+```
+
+The mean steps per day with estimated values for missing data is **`r prettyNum(mean_steps_per_day_complete)`**
+(before adding estimated steps for the `NA` values, it was **`r prettyNum(mean_steps_per_day)`**).
+
+The median is **`r prettyNum(median_steps_per_day_complete)`** (before adding estimated
+steps for the `NA` values it was **`r median_steps_per_day`**).
+
+```{r}
+mean_difference <- diff(c(mean_steps_per_day, mean_steps_per_day_complete))
+median_difference <- diff(c(median_steps_per_day, median_steps_per_day_complete))
+```
+
+The difference between the original mean and the mean with filled in values for 
+missing data is **`r mean_difference`**.
+
+The difference between the original median and the median with filled in values for 
+missing data is **`r median_difference`**.
+
+Even though the numbers change by a relatively small amount, the center of the
+histogram shoots up dramatically, suggesting that the new distribution is unnaturally
+weighted toward the middle.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?

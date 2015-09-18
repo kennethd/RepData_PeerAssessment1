@@ -11,6 +11,7 @@ cached, and for Rmarkdown to be verbose:
 ```r
 library(knitr)
 opts_knit$set(echo = TRUE, cache = FALSE, verbose = TRUE)
+set.seed(1)
 ```
 
 ## Loading and preprocessing the data
@@ -57,6 +58,9 @@ summary(activity)
 ##  NA's   :2304     (Other)   :15840
 ```
 
+The `str()` output shows us the expected number of observations, and the summary of
+the `date` variable indicates we have the expected 288 observations per day.
+
 Notice the 2,304 `NA` values out of 17,568 observations (about 13%).
 
 
@@ -72,27 +76,29 @@ Instead, the `interval` value uses the 10s place to indicate the hour; for midni
 to one a.m., the range 0..55 is used, one a.m. to two a.m. uses 100..155, eleven p.m.
 to midnight uses 2300..2355.
 
-Rather than trying to parse that, create a new variable to represent the minute 
-of the day by assigning a vector of 288 increments of 5, beginning with 0, which 
-will repeat for each day's 288 observations:
+Rather than trying to parse that, we will simply create a new variable to represent
+the minute of the day by assigning a vector of 288 increments of 5, beginning with 0, 
+which will repeat for each day's 288 observations:
 
 
 ```r
-activity$dayminute <- c(0:287) * 5
+activity$daymin <- c(0:287) * 5
 tail(activity)
 ```
 
 ```
-##       steps       date interval dayminute
-## 17563    NA 2012-11-30     2330      1410
-## 17564    NA 2012-11-30     2335      1415
-## 17565    NA 2012-11-30     2340      1420
-## 17566    NA 2012-11-30     2345      1425
-## 17567    NA 2012-11-30     2350      1430
-## 17568    NA 2012-11-30     2355      1435
+##       steps       date interval daymin
+## 17563    NA 2012-11-30     2330   1410
+## 17564    NA 2012-11-30     2335   1415
+## 17565    NA 2012-11-30     2340   1420
+## 17566    NA 2012-11-30     2345   1425
+## 17567    NA 2012-11-30     2350   1430
+## 17568    NA 2012-11-30     2355   1435
 ```
 
-With `dayminute` in place, we can use it in combination with the `date` string 
+### Add datetime variable
+
+With `daymin` in place, we can use it in combination with the `date` string 
 to add a datetime variable, called `dt`:
 
 
@@ -102,13 +108,52 @@ tail(activity)
 ```
 
 ```
-##       steps       date interval dayminute                  dt
-## 17563    NA 2012-11-30     2330      1410 2012-11-30 23:30:00
-## 17564    NA 2012-11-30     2335      1415 2012-11-30 23:35:00
-## 17565    NA 2012-11-30     2340      1420 2012-11-30 23:40:00
-## 17566    NA 2012-11-30     2345      1425 2012-11-30 23:45:00
-## 17567    NA 2012-11-30     2350      1430 2012-11-30 23:50:00
-## 17568    NA 2012-11-30     2355      1435 2012-11-30 23:55:00
+##       steps       date interval daymin                  dt
+## 17563    NA 2012-11-30     2330   1410 2012-11-30 23:30:00
+## 17564    NA 2012-11-30     2335   1415 2012-11-30 23:35:00
+## 17565    NA 2012-11-30     2340   1420 2012-11-30 23:40:00
+## 17566    NA 2012-11-30     2345   1425 2012-11-30 23:45:00
+## 17567    NA 2012-11-30     2350   1430 2012-11-30 23:50:00
+## 17568    NA 2012-11-30     2355   1435 2012-11-30 23:55:00
+```
+
+### Add is_weekend boolean
+
+One distinction we will want to make in our analysis is separating weekday 
+activity from weekend activity.  We can use the `weekdays()` function together 
+with the `dt` variable we just created to distinguish between them.
+
+While we're at it, we might as well keep a `weekday` variable around too -- if 
+nothing else, it makes it easier to debug calculations based on the `is_weekend`
+variable.
+
+
+```r
+activity$weekday <- weekdays(activity$dt)
+activity$is_weekend <- activity$weekday %in% c("Saturday", "Sunday")
+```
+
+October 2012 had 4 Saturdays + 4 Sundays (6-7, 13-14, 20-21, 27-28), as did 
+November (3-4, 10-11, 17-18, 24-25), for a total of 16 days, or 4608 observations.
+
+
+```r
+count_weekend_days <- nrow(subset(activity, activity$is_weekend))
+```
+
+We flagged **4608** as weekend days.
+
+Our final `activity` data looks like this:
+
+
+```
+##   steps       date interval daymin                  dt weekday is_weekend
+## 1    NA 2012-10-01        0      0 2012-10-01 00:00:00  Monday      FALSE
+## 2    NA 2012-10-01        5      5 2012-10-01 00:05:00  Monday      FALSE
+## 3    NA 2012-10-01       10     10 2012-10-01 00:10:00  Monday      FALSE
+## 4    NA 2012-10-01       15     15 2012-10-01 00:15:00  Monday      FALSE
+## 5    NA 2012-10-01       20     20 2012-10-01 00:20:00  Monday      FALSE
+## 6    NA 2012-10-01       25     25 2012-10-01 00:25:00  Monday      FALSE
 ```
 
 
@@ -134,35 +179,6 @@ str(steps_per_day)
 ## 'data.frame':	53 obs. of  2 variables:
 ##  $ date : Factor w/ 61 levels "2012-10-01","2012-10-02",..: 2 3 4 5 6 7 9 10 11 12 ...
 ##  $ steps: int  126 11352 12116 13294 15420 11015 12811 9900 10304 17382 ...
-```
-
-```r
-head(steps_per_day)
-```
-
-```
-##         date steps
-## 1 2012-10-02   126
-## 2 2012-10-03 11352
-## 3 2012-10-04 12116
-## 4 2012-10-05 13294
-## 5 2012-10-06 15420
-## 6 2012-10-07 11015
-```
-
-```r
-summary(steps_per_day)
-```
-
-```
-##          date        steps      
-##  2012-10-02: 1   Min.   :   41  
-##  2012-10-03: 1   1st Qu.: 8841  
-##  2012-10-04: 1   Median :10765  
-##  2012-10-05: 1   Mean   :10766  
-##  2012-10-06: 1   3rd Qu.:13294  
-##  2012-10-07: 1   Max.   :21194  
-##  (Other)   :47
 ```
 
 Notice we have only 53 observations, but the `date` factor has the expected 61 
@@ -191,8 +207,8 @@ aggregate(steps ~ date, na_steps, sum)
 ## 8 2012-11-30   288
 ```
 
-There are only 8 days with `NA` steps values, and all 8 are missing all 288 
-observations for the day (there are 1,440 minutes in a day, divided by 5 = 288).
+There are 8 days with `NA` steps values, and all 8 are missing all 288 
+observations for the day.
 
 
 ### Histogram of total steps per day
@@ -203,7 +219,7 @@ The histogram displays the frequency that occurances of the total steps taken pe
 day falls within a set of ranges.
 
 Adding a `breaks` argument to increase the granularity of the graph reveals some
-interesting sparse ranges toward the extremes of the x-axis:
+interesting sparse ranges, especially toward the extremes of the x-axis:
 
 
 ```r
@@ -224,7 +240,8 @@ mean_steps_per_day <- mean(steps_per_day$steps)
 median_steps_per_day <- median(steps_per_day$steps)
 ```
 
-The mean steps per day is **1.0766189\times 10^{4}**, and the median is **10765**.
+The mean steps per day is **10766.19**, 
+and the median is **10765**.
 
 
 ## What is the average daily activity pattern?
@@ -234,33 +251,25 @@ across all days in the dataset.
 
 
 ```r
-avg_steps_per_interval <- aggregate(steps ~ interval, activity, mean)
-head(avg_steps_per_interval)
+avg_steps_per_interval <- as.data.frame(aggregate(steps ~ interval, activity, mean))
+str(avg_steps_per_interval)
 ```
 
 ```
-##   interval     steps
-## 1        0 1.7169811
-## 2        5 0.3396226
-## 3       10 0.1320755
-## 4       15 0.1509434
-## 5       20 0.0754717
-## 6       25 2.0943396
+## 'data.frame':	288 obs. of  2 variables:
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+##  $ steps   : num  1.717 0.3396 0.1321 0.1509 0.0755 ...
 ```
+
+The `str()` output shows we have rows for the expected 288 intervals, and the 
+values for both variables look reasonable.
+
 
 ```r
-summary(avg_steps_per_interval)
+count_na_intervals <- nrow(subset(avg_steps_per_interval, is.na(avg_steps_per_interval$steps)))
 ```
 
-```
-##     interval          steps        
-##  Min.   :   0.0   Min.   :  0.000  
-##  1st Qu.: 588.8   1st Qu.:  2.486  
-##  Median :1177.5   Median : 34.113  
-##  Mean   :1177.5   Mean   : 37.383  
-##  3rd Qu.:1766.2   3rd Qu.: 52.835  
-##  Max.   :2355.0   Max.   :206.170
-```
+Our averages should not include any `NA` values: **0**
 
 
 ### Time-series plot of daily activity pattern
@@ -284,22 +293,13 @@ grid(nx = 24, ny = 1)
 
 
 ```r
-# convert from list to data.frame
-avg_steps_per_interval_df = as.data.frame(avg_steps_per_interval)
 # sort by avg steps
-avg_steps_per_interval_df[ order(avg_steps_per_interval_df[2], decreasing = TRUE),  ][1, ]
+highest_avg_steps_int <- avg_steps_per_interval[ order(avg_steps_per_interval[2], decreasing = TRUE),  ][1, 1]
+highest_avg_steps <- avg_steps_per_interval[ order(avg_steps_per_interval[2], decreasing = TRUE),  ][1, 2]
 ```
 
-```
-##     interval    steps
-## 104      835 206.1698
-```
-
-```r
-interval_with_highest_avg_steps <- avg_steps_per_interval_df[ order(avg_steps_per_interval_df[2], decreasing = TRUE),  ][1, 1]
-```
-
-The interval with the most steps on average is **835**.
+The interval with the most steps on average is **835**
+(the highest average steps value was **206.1698113**).
 
 
 ## Imputing missing values
@@ -322,10 +322,58 @@ There are **2304** rows with `NA` values.
 
 *Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.*
 
+As a first pass, fill in `NA` values with the rounded mean for that interval 
+across all days.
+
 
 ### Create new dataset with missing values filled in
 
 *Create a new dataset that is equal to the original dataset but with the missing data filled in.*
+
+
+```r
+activity_complete <- activity
+activity_complete$steps <- ifelse(is.na(activity_complete$steps), 
+                                  round(avg_steps_per_interval[match(avg_steps_per_interval$interval, 
+                                                                     activity_complete$interval), 2]),
+                                  activity_complete$steps)
+count_na_steps_complete <- nrow(subset(activity_complete, is.na(activity_complete$steps)))
+```
+
+We expect the new dataset to have zero `NA` values in the new data set: **0**.
+
+October 1st was one of the days that included `NA` values, let's look at the
+estimated steps for the first few rows now, compared to the calculated averages:
+
+
+```r
+head(cbind(avg_steps_per_interval, est=activity_complete[ , 1]), n = 20)
+```
+
+```
+##    interval     steps est
+## 1         0 1.7169811   2
+## 2         5 0.3396226   0
+## 3        10 0.1320755   0
+## 4        15 0.1509434   0
+## 5        20 0.0754717   0
+## 6        25 2.0943396   2
+## 7        30 0.5283019   1
+## 8        35 0.8679245   1
+## 9        40 0.0000000   0
+## 10       45 1.4716981   1
+## 11       50 0.3018868   0
+## 12       55 0.1320755   0
+## 13      100 0.3207547   0
+## 14      105 0.6792453   1
+## 15      110 0.1509434   0
+## 16      115 0.3396226   0
+## 17      120 0.0000000   0
+## 18      125 1.1132075   1
+## 19      130 1.8301887   2
+## 20      135 0.1698113   0
+```
+
 
 
 ### Compare new dataset with original
@@ -333,8 +381,42 @@ There are **2304** rows with `NA` values.
 *Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?*
 
 
+```r
+steps_per_day_complete <- aggregate(steps ~ date, activity_complete, sum)
+mean_steps_per_day_complete <- mean(steps_per_day_complete$steps)
+median_steps_per_day_complete <- median(steps_per_day_complete$steps)
+
+hist(steps_per_day_complete$steps,  main = "Total steps per day with estimated values for missing data", 
+     xlab = "Number of steps", breaks = 36, col = "yellow")
+
+hist(steps_per_day$steps, add = TRUE, breaks = 36, col = "darkorange")
+
+legend("topright", c("with NAs", "estimated"), col=c("darkorange", "yellow"), lwd = 6)
+```
+
+![](PA1_template_files/figure-html/total-steps-per-day-histogram-complete-1.png) 
+
+The mean steps per day with estimated values for missing data is **10765.64**
+(before adding estimated steps for the `NA` values, it was **10766.19**).
+
+The median is **10762** (before adding estimated
+steps for the `NA` values it was **10765**).
 
 
+```r
+mean_difference <- diff(c(mean_steps_per_day, mean_steps_per_day_complete))
+median_difference <- diff(c(median_steps_per_day, median_steps_per_day_complete))
+```
+
+The difference between the original mean and the mean with filled in values for 
+missing data is **-0.549335**.
+
+The difference between the original median and the median with filled in values for 
+missing data is **-3**.
+
+Even though the numbers change by a relatively small amount, the center of the
+histogram shoots up dramatically, suggesting that the new distribution is unnaturally
+weighted toward the middle.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
