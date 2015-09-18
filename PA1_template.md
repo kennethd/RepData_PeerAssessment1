@@ -1,10 +1,11 @@
 # Reproducible Research: Peer Assessment 1
 Kenneth Dombrowski  
+`r Sys.Date()`  
 
-Text in italics is copied from the [assignment][1].
+Text in italics is copied from the [assignment][1] for reference.
 
-To begin, let's set some global options.  We want R code to always echo, nothing 
-to be cached, and for Rmarkdown to be verbose:
+These global options will cause R code to always echo by default, nothing to be 
+cached, and for Rmarkdown to be verbose:
 
 
 ```r
@@ -14,8 +15,8 @@ opts_knit$set(echo = TRUE, cache = FALSE, verbose = TRUE)
 
 ## Loading and preprocessing the data
 
-Your working directory must be set to the top level of this repo, 
-e.g. `setwd("~/git/RepData_PeerAssessment1")`.
+To load the data your working directory must be set to the top level of this 
+repo, e.g. `setwd("~/git/RepData_PeerAssessment1")`.
 
 
 ```r
@@ -23,7 +24,11 @@ unzip("activity.zip")
 activity = read.csv("activity.csv")
 ```
 
-Let's take a peek at the data:
+The data consists of one observation taken every five minutes for a period of 
+two months, or 61 days (October 1...31 + November 1...30).  61 * 1440 (minutes 
+in a day) = 87,840, divided by 5 we expect 17,568 observations.
+
+1440 / 5 works out to 288 observations per day.
 
 
 ```r
@@ -52,7 +57,59 @@ summary(activity)
 ##  NA's   :2304     (Other)   :15840
 ```
 
-Note the 2,304 `NA` values out of 17,568 observations (about 13%).
+Notice the 2,304 `NA` values out of 17,568 observations (about 13%).
+
+
+###  Non-contiguous intervals
+
+The summary of the `interval` variable is interesting in that the max value is 
+greater than the total number of minutes in a day.  From the `str()` output one 
+might expect the values to be a series from 0 to 1435 (288 increments of 5), so
+you could do math like `as.POSIXct(activity[288, 2]) + (60 * activity[288, 3])`
+and get the result `"2012-10-01 23:55:00 EDT"`.
+
+Instead, the `interval` value uses the 10s place to indicate the hour; for midnight 
+to one a.m., the range 0..55 is used, one a.m. to two a.m. uses 100..155, eleven p.m.
+to midnight uses 2300..2355.
+
+Rather than trying to parse that, create a new variable to represent the minute 
+of the day by assigning a vector of 288 increments of 5, beginning with 0, which 
+will repeat for each day's 288 observations:
+
+
+```r
+activity$dayminute <- c(0:287) * 5
+tail(activity)
+```
+
+```
+##       steps       date interval dayminute
+## 17563    NA 2012-11-30     2330      1410
+## 17564    NA 2012-11-30     2335      1415
+## 17565    NA 2012-11-30     2340      1420
+## 17566    NA 2012-11-30     2345      1425
+## 17567    NA 2012-11-30     2350      1430
+## 17568    NA 2012-11-30     2355      1435
+```
+
+With `dayminute` in place, we can use it in combination with the `date` string 
+to add a datetime variable, called `dt`:
+
+
+```r
+activity$dt <- as.POSIXct(activity[, 2]) + (60 * activity[, 4])
+tail(activity)
+```
+
+```
+##       steps       date interval dayminute                  dt
+## 17563    NA 2012-11-30     2330      1410 2012-11-30 23:30:00
+## 17564    NA 2012-11-30     2335      1415 2012-11-30 23:35:00
+## 17565    NA 2012-11-30     2340      1420 2012-11-30 23:40:00
+## 17566    NA 2012-11-30     2345      1425 2012-11-30 23:45:00
+## 17567    NA 2012-11-30     2350      1430 2012-11-30 23:50:00
+## 17568    NA 2012-11-30     2355      1435 2012-11-30 23:55:00
+```
 
 
 ## What is mean total number of steps taken per day?
@@ -249,9 +306,50 @@ The interval with the most steps on average is **835**.
 
 *Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.*
 
+### Count missing values in the dataset
+
+*Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)*
+
+
+```r
+count_na_steps <- nrow(subset(activity, is.na(activity$steps)))
+```
+
+There are **2304** rows with `NA` values.
+
+
+### Strategy for filling in missing data
+
+*Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.*
+
+
+### Create new dataset with missing values filled in
+
+*Create a new dataset that is equal to the original dataset but with the missing data filled in.*
+
+
+### Compare new dataset with original
+
+*Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?*
+
+
+
+
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
+*For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.*
+
+### Add factor variable to indicate weekday or weekend
+
+*Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.*
+
+
+
+### Create panel plot comparing time series of weekday data vs. weekend data
+
+*Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.*
 
 
 

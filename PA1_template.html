@@ -10,6 +10,7 @@
 
 <meta name="author" content="Kenneth Dombrowski" />
 
+<meta name="date" content="2015-09-18" />
 
 <title>Reproducible Research: Peer Assessment 1</title>
 
@@ -63,19 +64,21 @@ img {
 <div id="header">
 <h1 class="title">Reproducible Research: Peer Assessment 1</h1>
 <h4 class="author"><em>Kenneth Dombrowski</em></h4>
+<h4 class="date"><em>2015-09-18</em></h4>
 </div>
 
 
-<p>Text in italics is copied from the <a href="https://class.coursera.org/repdata-032/human_grading/view/courses/975145/assessments/3/submissions">assignment</a>.</p>
-<p>To begin, let’s set some global options. We want R code to always echo, nothing to be cached, and for Rmarkdown to be verbose:</p>
+<p>Text in italics is copied from the <a href="https://class.coursera.org/repdata-032/human_grading/view/courses/975145/assessments/3/submissions">assignment</a> for reference.</p>
+<p>These global options will cause R code to always echo by default, nothing to be cached, and for Rmarkdown to be verbose:</p>
 <pre class="r"><code>library(knitr)
 opts_knit$set(echo = TRUE, cache = FALSE, verbose = TRUE)</code></pre>
 <div id="loading-and-preprocessing-the-data" class="section level2">
 <h2>Loading and preprocessing the data</h2>
-<p>Your working directory must be set to the top level of this repo, e.g. <code>setwd(&quot;~/git/RepData_PeerAssessment1&quot;)</code>.</p>
+<p>To load the data your working directory must be set to the top level of this repo, e.g. <code>setwd(&quot;~/git/RepData_PeerAssessment1&quot;)</code>.</p>
 <pre class="r"><code>unzip(&quot;activity.zip&quot;)
 activity = read.csv(&quot;activity.csv&quot;)</code></pre>
-<p>Let’s take a peek at the data:</p>
+<p>The data consists of one observation taken every five minutes for a period of two months, or 61 days (October 1…31 + November 1…30). 61 * 1440 (minutes in a day) = 87,840, divided by 5 we expect 17,568 observations.</p>
+<p>1440 / 5 works out to 288 observations per day.</p>
 <pre class="r"><code>str(activity)</code></pre>
 <pre><code>## 'data.frame':    17568 obs. of  3 variables:
 ##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
@@ -90,7 +93,32 @@ activity = read.csv(&quot;activity.csv&quot;)</code></pre>
 ##  3rd Qu.: 12.00   2012-10-05:  288   3rd Qu.:1766.2  
 ##  Max.   :806.00   2012-10-06:  288   Max.   :2355.0  
 ##  NA's   :2304     (Other)   :15840</code></pre>
-<p>Note the 2,304 <code>NA</code> values out of 17,568 observations (about 13%).</p>
+<p>Notice the 2,304 <code>NA</code> values out of 17,568 observations (about 13%).</p>
+<div id="non-contiguous-intervals" class="section level3">
+<h3>Non-contiguous intervals</h3>
+<p>The summary of the <code>interval</code> variable is interesting in that the max value is greater than the total number of minutes in a day. From the <code>str()</code> output one might expect the values to be a series from 0 to 1435 (288 increments of 5), so you could do math like <code>as.POSIXct(activity[288, 2]) + (60 * activity[288, 3])</code> and get the result <code>&quot;2012-10-01 23:55:00 EDT&quot;</code>.</p>
+<p>Instead, the <code>interval</code> value uses the 10s place to indicate the hour; for midnight to one a.m., the range 0..55 is used, one a.m. to two a.m. uses 100..155, eleven p.m. to midnight uses 2300..2355.</p>
+<p>Rather than trying to parse that, create a new variable to represent the minute of the day by assigning a vector of 288 increments of 5, beginning with 0, which will repeat for each day’s 288 observations:</p>
+<pre class="r"><code>activity$dayminute &lt;- c(0:287) * 5
+tail(activity)</code></pre>
+<pre><code>##       steps       date interval dayminute
+## 17563    NA 2012-11-30     2330      1410
+## 17564    NA 2012-11-30     2335      1415
+## 17565    NA 2012-11-30     2340      1420
+## 17566    NA 2012-11-30     2345      1425
+## 17567    NA 2012-11-30     2350      1430
+## 17568    NA 2012-11-30     2355      1435</code></pre>
+<p>With <code>dayminute</code> in place, we can use it in combination with the <code>date</code> string to add a datetime variable, called <code>dt</code>:</p>
+<pre class="r"><code>activity$dt &lt;- as.POSIXct(activity[, 2]) + (60 * activity[, 4])
+tail(activity)</code></pre>
+<pre><code>##       steps       date interval dayminute                  dt
+## 17563    NA 2012-11-30     2330      1410 2012-11-30 23:30:00
+## 17564    NA 2012-11-30     2335      1415 2012-11-30 23:35:00
+## 17565    NA 2012-11-30     2340      1420 2012-11-30 23:40:00
+## 17566    NA 2012-11-30     2345      1425 2012-11-30 23:45:00
+## 17567    NA 2012-11-30     2350      1430 2012-11-30 23:50:00
+## 17568    NA 2012-11-30     2355      1435 2012-11-30 23:55:00</code></pre>
+</div>
 </div>
 <div id="what-is-mean-total-number-of-steps-taken-per-day" class="section level2">
 <h2>What is mean total number of steps taken per day?</h2>
@@ -196,9 +224,36 @@ avg_steps_per_interval_df[ order(avg_steps_per_interval_df[2], decreasing = TRUE
 <div id="imputing-missing-values" class="section level2">
 <h2>Imputing missing values</h2>
 <p><em>Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.</em></p>
+<div id="count-missing-values-in-the-dataset" class="section level3">
+<h3>Count missing values in the dataset</h3>
+<p><em>Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)</em></p>
+<pre class="r"><code>count_na_steps &lt;- nrow(subset(activity, is.na(activity$steps)))</code></pre>
+<p>There are <strong>2304</strong> rows with <code>NA</code> values.</p>
+</div>
+<div id="strategy-for-filling-in-missing-data" class="section level3">
+<h3>Strategy for filling in missing data</h3>
+<p><em>Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.</em></p>
+</div>
+<div id="create-new-dataset-with-missing-values-filled-in" class="section level3">
+<h3>Create new dataset with missing values filled in</h3>
+<p><em>Create a new dataset that is equal to the original dataset but with the missing data filled in.</em></p>
+</div>
+<div id="compare-new-dataset-with-original" class="section level3">
+<h3>Compare new dataset with original</h3>
+<p><em>Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?</em></p>
+</div>
 </div>
 <div id="are-there-differences-in-activity-patterns-between-weekdays-and-weekends" class="section level2">
 <h2>Are there differences in activity patterns between weekdays and weekends?</h2>
+<p><em>For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.</em></p>
+<div id="add-factor-variable-to-indicate-weekday-or-weekend" class="section level3">
+<h3>Add factor variable to indicate weekday or weekend</h3>
+<p><em>Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.</em></p>
+</div>
+<div id="create-panel-plot-comparing-time-series-of-weekday-data-vs.weekend-data" class="section level3">
+<h3>Create panel plot comparing time series of weekday data vs. weekend data</h3>
+<p><em>Make a panel plot containing a time series plot (i.e. type = “l”) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.</em></p>
+</div>
 </div>
 
 
