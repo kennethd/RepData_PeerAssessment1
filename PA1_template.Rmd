@@ -63,7 +63,6 @@ which will repeat for each day's 288 observations:
 
 ```{r add-dayminute}
 activity$daymin <- c(0:287) * 5
-tail(activity)
 ```
 
 ### Add datetime variable
@@ -76,33 +75,11 @@ activity$dt <- as.POSIXct(activity[, 2]) + (60 * activity[, 4])
 tail(activity)
 ```
 
-### Add is_weekend boolean
-
-One distinction we will want to make in our analysis is separating weekday 
-activity from weekend activity.  We can use the `weekdays()` function together 
-with the `dt` variable we just created to distinguish between them.
-
-While we're at it, we might as well keep a `weekday` variable around too -- if 
-nothing else, it makes it easier to debug calculations based on the `is_weekend`
-variable.
-
-```{r add-is-weekend}
-activity$weekday <- weekdays(activity$dt)
-activity$is_weekend <- activity$weekday %in% c("Saturday", "Sunday")
-```
-
-October 2012 had 4 Saturdays + 4 Sundays (6-7, 13-14, 20-21, 27-28), as did 
-November (3-4, 10-11, 17-18, 24-25), for a total of 16 days, or 4608 observations.
-
-```{r count-weekend-days}
-count_weekend_days <- nrow(subset(activity, activity$is_weekend))
-```
-
-We flagged **`r count_weekend_days`** as weekend days.
 
 Our final `activity` data looks like this:
 
 ```{r echo = FALSE, activity-data-final}
+str(activity)
 head(activity)
 ```
 
@@ -119,7 +96,7 @@ steps_per_day <- aggregate(steps ~ date, activity, sum)
 
 Again, let's take a peek at the data to make sure it looks like what we expect:
 
-```{r total-steps-per-day-summary}
+```{r echo = FALSE, total-steps-per-day-summary}
 str(steps_per_day)
 ```
 
@@ -186,7 +163,7 @@ values for both variables look reasonable.
 count_na_intervals <- nrow(subset(avg_steps_per_interval, is.na(avg_steps_per_interval$steps)))
 ```
 
-Our averages should not include any `NA` values: **`r count_na_intervals`**
+Our averages include **`r count_na_intervals`** `NA` values.
 
 
 ### Time-series plot of daily activity pattern
@@ -309,14 +286,44 @@ weighted toward the middle.
 
 *Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.*
 
+```{r add-is-weekend}
+activity_complete$weekday <- factor(weekdays(activity_complete$dt))
+activity_complete$is_weekend <- factor(ifelse(activity_complete$weekday %in% c("Saturday", "Sunday"),
+                                              "weekend", "weekday"))
+```
+
+October 2012 had 4 Saturdays + 4 Sundays (6-7, 13-14, 20-21, 27-28), as did 
+November (3-4, 10-11, 17-18, 24-25), for a total of 16 days, or 4608 observations.
+
+```{r count-weekend-days}
+count_weekend_days <- nrow(subset(activity_complete, activity_complete$is_weekend == "weekend"))
+```
+
+We flagged **`r count_weekend_days`** as weekend days.
 
 
 ### Create panel plot comparing time series of weekday data vs. weekend data
 
 *Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.*
 
+```{r panel-plot}
+library(lattice)
+avg_steps_per_interval_complete <- cbind(aggregate(steps ~ interval, activity_complete, mean),
+                                         is_weekend=activity_complete$is_weekend)
+xyplot(steps ~ interval|is_weekend, 
+       data = avg_steps_per_interval_complete, 
+       type = "l", 
+       xlab = "interval", 
+       ylab = "steps", 
+       layout = c(1, 2))
+```
 
+Verify that we have the expected 17568 observations, and that 4608 are flagged as weekend.
 
+```{r avg-steps-per-interval-complete}
+str(avg_steps_per_interval_complete)
+summary(avg_steps_per_interval_complete)
+```
 
 
 [1]: https://class.coursera.org/repdata-032/human_grading/view/courses/975145/assessments/3/submissions
