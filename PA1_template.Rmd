@@ -68,19 +68,16 @@ activity$daymin <- c(0:287) * 5
 ### Add datetime variable
 
 With `daymin` in place, we can use it in combination with the `date` string 
-to add a datetime variable, called `dt`:
+to add a datetime variable, called `dt`.
 
 ```{r add-dt}
 activity$dt <- as.POSIXct(activity[, 2]) + (60 * activity[, 4])
-tail(activity)
 ```
 
+Tailing the modified data confirms that both `daymin` and `dt` are created as expected:
 
-Our final `activity` data looks like this:
-
-```{r echo = FALSE, activity-data-final}
-str(activity)
-head(activity)
+```{r echo = FALSE, tail-daymin-dt}
+tail(activity)
 ```
 
 

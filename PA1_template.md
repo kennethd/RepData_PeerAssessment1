@@ -88,13 +88,15 @@ activity$daymin <- c(0:287) * 5
 ### Add datetime variable
 
 With `daymin` in place, we can use it in combination with the `date` string 
-to add a datetime variable, called `dt`:
+to add a datetime variable, called `dt`.
 
 
 ```r
 activity$dt <- as.POSIXct(activity[, 2]) + (60 * activity[, 4])
-tail(activity)
 ```
+
+Tailing the modified data confirms that both `daymin` and `dt` are created as expected:
+
 
 ```
 ##       steps       date interval daymin                  dt
@@ -104,29 +106,6 @@ tail(activity)
 ## 17566    NA 2012-11-30     2345   1425 2012-11-30 23:45:00
 ## 17567    NA 2012-11-30     2350   1430 2012-11-30 23:50:00
 ## 17568    NA 2012-11-30     2355   1435 2012-11-30 23:55:00
-```
-
-
-Our final `activity` data looks like this:
-
-
-```
-## 'data.frame':	17568 obs. of  5 variables:
-##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
-##  $ date    : Factor w/ 61 levels "2012-10-01","2012-10-02",..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
-##  $ daymin  : num  0 5 10 15 20 25 30 35 40 45 ...
-##  $ dt      : POSIXct, format: "2012-10-01 00:00:00" "2012-10-01 00:05:00" ...
-```
-
-```
-##   steps       date interval daymin                  dt
-## 1    NA 2012-10-01        0      0 2012-10-01 00:00:00
-## 2    NA 2012-10-01        5      5 2012-10-01 00:05:00
-## 3    NA 2012-10-01       10     10 2012-10-01 00:10:00
-## 4    NA 2012-10-01       15     15 2012-10-01 00:15:00
-## 5    NA 2012-10-01       20     20 2012-10-01 00:20:00
-## 6    NA 2012-10-01       25     25 2012-10-01 00:25:00
 ```
 
 
