@@ -305,21 +305,22 @@ We flagged **`r count_weekend_days`** as weekend days.
 
 ```{r panel-plot}
 library(lattice)
-avg_steps_per_interval_complete <- cbind(aggregate(steps ~ interval, activity_complete, mean),
-                                         is_weekend=activity_complete$is_weekend)
-xyplot(steps ~ interval|is_weekend, 
-       data = avg_steps_per_interval_complete, 
+avg_steps_per_interval_by_is_weekend <- aggregate(steps ~ interval + is_weekend, 
+                                                  activity_complete, mean) 
+xyplot(steps ~ interval | is_weekend, 
+       data = avg_steps_per_interval_by_is_weekend, 
        type = "l", 
        xlab = "interval", 
        ylab = "steps", 
        layout = c(1, 2))
 ```
 
-Verify that we have the expected 17568 observations, and that 4608 are flagged as weekend.
+This new aggregate should have two values for each of the 288 intervals, one 
+with the mean of the values for that interval on weekdays, and another for weekends.
 
-```{r avg-steps-per-interval-complete}
-str(avg_steps_per_interval_complete)
-summary(avg_steps_per_interval_complete)
+```{r echo = FALSE, avg-steps-per-interval-complete}
+str(avg_steps_per_interval_by_is_weekend)
+summary(avg_steps_per_interval_by_is_weekend)
 ```
 
 

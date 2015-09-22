@@ -400,10 +400,10 @@ We flagged **4608** as weekend days.
 
 ```r
 library(lattice)
-avg_steps_per_interval_complete <- cbind(aggregate(steps ~ interval, activity_complete, mean),
-                                         is_weekend=activity_complete$is_weekend)
-xyplot(steps ~ interval|is_weekend, 
-       data = avg_steps_per_interval_complete, 
+avg_steps_per_interval_by_is_weekend <- aggregate(steps ~ interval + is_weekend, 
+                                                  activity_complete, mean) 
+xyplot(steps ~ interval | is_weekend, 
+       data = avg_steps_per_interval_by_is_weekend, 
        type = "l", 
        xlab = "interval", 
        ylab = "steps", 
@@ -412,32 +412,25 @@ xyplot(steps ~ interval|is_weekend,
 
 ![](./PA1_template_files/figure-html/panel-plot-1.png) 
 
-Verify that we have the expected 17568 observations, and that 4608 are flagged as weekend.
+This new aggregate should have two values for each of the 288 intervals, one 
+with the mean of the values for that interval on weekdays, and another for weekends.
 
-
-```r
-str(avg_steps_per_interval_complete)
-```
 
 ```
-## 'data.frame':	17568 obs. of  3 variables:
+## 'data.frame':	576 obs. of  3 variables:
 ##  $ interval  : int  0 5 10 15 20 25 30 35 40 45 ...
-##  $ steps     : num  1.7541 0.2951 0.1148 0.1311 0.0656 ...
 ##  $ is_weekend: Factor w/ 2 levels "weekday","weekend": 1 1 1 1 1 1 1 1 1 1 ...
-```
-
-```r
-summary(avg_steps_per_interval_complete)
+##  $ steps     : num  2.2889 0.4 0.1556 0.1778 0.0889 ...
 ```
 
 ```
-##     interval          steps          is_weekend   
-##  Min.   :   0.0   Min.   :  0.00   weekday:12960  
-##  1st Qu.: 588.8   1st Qu.:  2.52   weekend: 4608  
-##  Median :1177.5   Median : 34.16                  
-##  Mean   :1177.5   Mean   : 37.38                  
-##  3rd Qu.:1766.2   3rd Qu.: 52.86                  
-##  Max.   :2355.0   Max.   :206.15
+##     interval        is_weekend      steps        
+##  Min.   :   0.0   weekday:288   Min.   :  0.000  
+##  1st Qu.: 588.8   weekend:288   1st Qu.:  2.106  
+##  Median :1177.5                 Median : 28.125  
+##  Mean   :1177.5                 Mean   : 38.987  
+##  3rd Qu.:1766.2                 3rd Qu.: 61.230  
+##  Max.   :2355.0                 Max.   :230.356
 ```
 
 
