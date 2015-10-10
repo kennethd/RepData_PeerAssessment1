@@ -15,7 +15,6 @@ cached, and for Rmarkdown to be verbose:
 ```{r opts-knit}
 library(knitr)
 opts_knit$set(echo = TRUE, cache = FALSE, verbose = TRUE)
-set.seed(1)
 ```
 
 ## Loading and preprocessing the data
@@ -156,12 +155,6 @@ str(avg_steps_per_interval)
 The `str()` output shows we have rows for the expected 288 intervals, and the 
 values for both variables look reasonable.
 
-```{r count-na-intervals}
-count_na_intervals <- nrow(subset(avg_steps_per_interval, is.na(avg_steps_per_interval$steps)))
-```
-
-Our averages include **`r count_na_intervals`** `NA` values.
-
 
 ### Time-series plot of daily activity pattern
 
@@ -208,8 +201,14 @@ There are **`r count_na_steps`** rows with `NA` values.
 
 *Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.*
 
-As a first pass, fill in `NA` values with the rounded mean for that interval 
+As a first pass, let's fill in `NA` values with the rounded mean for that interval 
 across all days.
+
+Note, if you don't round the number of steps here into whole numbers, but instead
+allow decimal values of steps per interval, the next section's comparison of
+median & mean will be the same; as the original data uses integers for the steps
+per interval, I decided to be consistent with the existing data type and got a
+slightly different result.
 
 
 ### Create new dataset with missing values filled in

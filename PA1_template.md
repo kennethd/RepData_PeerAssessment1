@@ -11,7 +11,6 @@ cached, and for Rmarkdown to be verbose:
 ```r
 library(knitr)
 opts_knit$set(echo = TRUE, cache = FALSE, verbose = TRUE)
-set.seed(1)
 ```
 
 ## Loading and preprocessing the data
@@ -175,7 +174,7 @@ hist(steps_per_day$steps, main = "Total steps per day", xlab = "Number of steps"
      breaks = 36, col = "darkorange")
 ```
 
-![](./PA1_template_files/figure-html/total-steps-per-day-histogram-1.png) 
+![](PA1_template_files/figure-html/total-steps-per-day-histogram-1.png) 
 
 
 ### Mean & median of total steps per day
@@ -213,13 +212,6 @@ The `str()` output shows we have rows for the expected 288 intervals, and the
 values for both variables look reasonable.
 
 
-```r
-count_na_intervals <- nrow(subset(avg_steps_per_interval, is.na(avg_steps_per_interval$steps)))
-```
-
-Our averages include **0** `NA` values.
-
-
 ### Time-series plot of daily activity pattern
 
 *Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)*
@@ -232,7 +224,7 @@ plot(avg_steps_per_interval$interval, avg_steps_per_interval$steps, type = "l",
 grid(nx = 24, ny = 1)
 ```
 
-![](./PA1_template_files/figure-html/avg-steps-per-interval-time-series-plot-1.png) 
+![](PA1_template_files/figure-html/avg-steps-per-interval-time-series-plot-1.png) 
 
 
 ### Interval with most steps on average
@@ -270,8 +262,14 @@ There are **2304** rows with `NA` values.
 
 *Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.*
 
-As a first pass, fill in `NA` values with the rounded mean for that interval 
+As a first pass, let's fill in `NA` values with the rounded mean for that interval 
 across all days.
+
+Note, if you don't round the number of steps here into whole numbers, but instead
+allow decimal values of steps per interval, the next section's comparison of
+median & mean will be the same; as the original data uses integers for the steps
+per interval, I decided to be consistent with the existing data type and got a
+slightly different result.
 
 
 ### Create new dataset with missing values filled in
@@ -342,7 +340,7 @@ hist(steps_per_day$steps, add = TRUE, breaks = 36, col = "darkorange")
 legend("topright", c("with NAs", "estimated"), col=c("darkorange", "yellow"), lwd = 6)
 ```
 
-![](./PA1_template_files/figure-html/total-steps-per-day-histogram-complete-1.png) 
+![](PA1_template_files/figure-html/total-steps-per-day-histogram-complete-1.png) 
 
 The mean steps per day with estimated values for missing data is **10765.64**
 (before adding estimated steps for the `NA` values, it was **10766.19**).
@@ -410,7 +408,7 @@ xyplot(steps ~ interval | is_weekend,
        layout = c(1, 2))
 ```
 
-![](./PA1_template_files/figure-html/panel-plot-1.png) 
+![](PA1_template_files/figure-html/panel-plot-1.png) 
 
 This new aggregate should have two values for each of the 288 intervals, one 
 with the mean of the values for that interval on weekdays, and another for weekends.
